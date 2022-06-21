@@ -1,0 +1,1 @@
+{"_timestamp": 1655823260, "avg10_score": -271.6166666666666, "largest_steps": 125, "Episode reward": -269.55, "Episode_Sim_Time": 400, "Checkpoint reached": 45, "_runtime": 29, "avg10_checkpoints": 85.0, "episode Highspeed": 46.99053533229937, "_step": 7, "highest_speed": 86.3693476181035, "_wandb": {"runtime": 27}}

@@ -1,0 +1,24 @@
+{
+    "os": "Windows-10-10.0.22000-SP0",
+    "python": "3.7.9",
+    "heartbeatAt": "2022-06-21T14:45:03.603935",
+    "startedAt": "2022-06-21T14:45:02.258790",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080",
+    "gpu_count": 1,
+    "cpu_count": 20,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "e2eModel.py",
+    "codePath": "ROAR_Gym\\e2eModel.py",
+    "git": {
+        "remote": "https://github.com/FranardoHuang/ROAR",
+        "commit": "2e26a2b6e3f41d0ee21deb73c44a37983206fa5b"
+    },
+    "email": "1745500559@qq.com",
+    "root": "D:/Programming/Subjects/ROAR/ROAR_RL",
+    "host": "Windys-Desktop",
+    "username": "cxcyh",
+    "executable": "C:\\Program Files\\Python\\Python37\\python.exe"
+}
