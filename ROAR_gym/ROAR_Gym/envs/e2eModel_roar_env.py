@@ -57,10 +57,10 @@ class ROARppoEnvE2E(ROAREnv):
         elif self.mode=='combine':
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
         elif self.mode=='baseline':
-            self.observation_space = gym.spaces.Tuple((
-                Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
-                Box(np.array([-1.0,0,0]),1.0,shape = (3,), dtype=np.float32) #steering, throttle, braking
-            ))
+            self.observation_space = gym.spaces.Dict({
+                "occupancy_map": Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
+                "previous_control": Box(np.array([-1.0,0,0]),1.0,shape = (3,), dtype=np.float32) #steering, throttle, braking
+            })
         else:
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
         self.prev_speed = 0
@@ -79,7 +79,7 @@ class ROARppoEnvE2E(ROAREnv):
         self.complete_loop=False
         self.his_checkpoint=[]
         self.his_score=[]
-        self.time_to_waypoint_ratio = 0.25
+        self.time_to_waypoint_ratio = 0.5
         # self.crash_step=0
         # self.reward_step=0
         # self.reset_by_crash=True
@@ -103,6 +103,7 @@ class ROARppoEnvE2E(ROAREnv):
 
         self.deadzone_trigger = True
         self.deadzone_level = 0.001
+        self.previous_control = None
 
     def step(self, action: Any) -> Tuple[Any, float, bool, dict]:
         obs = []
@@ -124,10 +125,12 @@ class ROARppoEnvE2E(ROAREnv):
             if self.deadzone_trigger and abs(steering) < self.deadzone_level:
                 steering = 0.0
 
-
-            self.agent.kwargs["control"] = VehicleControl(throttle=throttle,
-                                                          steering=steering,
-                                                          braking=braking)
+            control = VehicleControl(throttle=throttle,
+                                    steering=steering,
+                                    braking=braking)
+            self.agent.kwargs["control"] = control
+            self.previous_control = control
+            
             ob, reward, is_done, info = super(ROARppoEnvE2E, self).step(action)
             obs.append(ob)
             rewards.append(reward)
@@ -202,9 +205,9 @@ class ROARppoEnvE2E(ROAREnv):
     def get_reward(self) -> float:
         # prep for reward computation
         # reward = -0.1*(1-self.agent.vehicle.control.throttle+10*self.agent.vehicle.control.braking+abs(self.agent.vehicle.control.steering))*400/8
-        reward = -1
+        reward = -0.05
         if self.agent.vehicle.control.steering == 0.0:
-            reward += 0.1
+            reward += 0.5
 
         if self.crash_check:
             print("no reward")
@@ -217,6 +220,7 @@ class ROARppoEnvE2E(ROAREnv):
 
 
         if not (self.agent.bbox_list[(self.agent.int_counter - self.death_line_dis) % len(self.agent.bbox_list)].has_crossed(self.agent.vehicle.transform))[0]:
+            print("cross?")
             reward -= 200
             self.crash_check = True
 
@@ -258,15 +262,22 @@ class ROARppoEnvE2E(ROAREnv):
             cv2.waitKey(1)
 
             cnnObs = map_list[:,:-1]
-            last_control = self.agent.kwargs["control"]
-            last_control_array = np.array([
+            last_control = self.previous_control
+            last_control_array = np.array([ #steering, throttle, braking
                 last_control.get_steering(),
                 last_control.get_throttle(),
                 last_control.get_braking()
-            ])#steering, throttle, braking
+            ]) if last_control is not None else np.array([
+                0.0,
+                0.0,
+                0.0
+            ])
 
 
-            return (cnnObs,last_control)
+            return {
+                "occupancy_map": cnnObs,
+                "previous_control": last_control_array
+            }
 
         else:
             data = self.agent.occupancy_map.get_map(transform=self.agent.vehicle.transform,
@@ -305,6 +316,7 @@ class ROARppoEnvE2E(ROAREnv):
             self.largest_steps=self.steps
         super(ROARppoEnvE2E, self).reset()
         self.steps=0
+        self.previous_control = None
         # self.crash_step=0
         # self.reward_step=0
         return self._get_obs()

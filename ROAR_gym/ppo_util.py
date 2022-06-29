@@ -425,10 +425,10 @@ class Atari_PPO_Adapted_CNN(BaseFeaturesExtractor):
         return self.network(observations)
 
 class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
-    def __init__(self, observation_space: gym.spaces.Tuple, features_dim: int = 256):
+    def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 256):
         super(YunhaoModifiedAtariCNN, self).__init__(observation_space,features_dim)
-        cnn_space = observation_space.spaces[0]
-        info_space = observation_space.spaces[1]
+        cnn_space = observation_space.spaces["occupancy_map"]
+        info_space = observation_space.spaces["previous_control"]
         channels = cnn_space.shape[0]*cnn_space.shape[1]
         self.network = nn.Sequential(
             # Scale(1/255),
@@ -445,11 +445,14 @@ class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
             # nn.ReLU(),
         )
 
-    def forward(self, observations : tuple) -> th.Tensor:
-        observations=observations.view(observations.shape[0],-1,*observations.shape[3:])
-        cnnOutput = self.network(observations[0])
-        infoOutput = observations[1]
-        return torch.concat((cnnOutput,infoOutput))
+    def forward(self, observations : dict) -> th.Tensor:
+        occupancy_map = observations["occupancy_map"]
+        previous_control = observations['previous_control']
+
+        occupancy_map=occupancy_map.view(occupancy_map.shape[0],-1,*occupancy_map.shape[3:])
+        cnnOutput = self.network(occupancy_map)
+
+        return torch.concat((cnnOutput,torch.reshape(previous_control,(1,-1))),dim=1)
 
 
 def find_latest_model(root_path: Path) -> Optional[Path]:
