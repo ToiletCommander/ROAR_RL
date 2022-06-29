@@ -57,7 +57,10 @@ class ROARppoEnvE2E(ROAREnv):
         elif self.mode=='combine':
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
         elif self.mode=='baseline':
-            self.observation_space = Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
+            self.observation_space = gym.spaces.Tuple((
+                Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
+                Box(np.array([-1.0,0,0]),1.0,shape = (3,), dtype=np.float32) #steering, throttle, braking
+            ))
         else:
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
         self.prev_speed = 0
@@ -254,7 +257,16 @@ class ROARppoEnvE2E(ROAREnv):
             cv2.imshow("data", np.hstack(np.hstack(map_list))) # uncomment to show occu map
             cv2.waitKey(1)
 
-            return map_list[:,:-1]
+            cnnObs = map_list[:,:-1]
+            last_control = self.agent.kwargs["control"]
+            last_control_array = np.array([
+                last_control.get_steering(),
+                last_control.get_throttle(),
+                last_control.get_braking()
+            ])#steering, throttle, braking
+
+
+            return (cnnObs,last_control)
 
         else:
             data = self.agent.occupancy_map.get_map(transform=self.agent.vehicle.transform,

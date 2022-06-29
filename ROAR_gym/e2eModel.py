@@ -71,7 +71,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 
 
 # imports for helper functions and torch cnn models
-from ppo_util import find_latest_model, CustomMaxPoolCNN, Atari_PPO_Adapted_CNN
+from ppo_util import find_latest_model, CustomMaxPoolCNN, Atari_PPO_Adapted_CNN, YunhaoModifiedAtariCNN
 
 
 
@@ -213,7 +213,7 @@ def main(pass_num):
     # Setting the feature extract or based on the environment mode
     if env.mode == 'baseline':
         policy_kwargs = dict(
-            features_extractor_class=Atari_PPO_Adapted_CNN,
+            features_extractor_class=YunhaoModifiedAtariCNN, #Atari_PPO_Adapted_CNN,
             features_extractor_kwargs=dict(features_dim=256)
         )
     else:

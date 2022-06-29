@@ -1,0 +1,135 @@
+diff --git a/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py b/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
+index 32b5134..1ad7df6 100644
+--- a/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
++++ b/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
+@@ -57,7 +57,10 @@ class ROARppoEnvE2E(ROAREnv):
+         elif self.mode=='combine':
+             self.observation_space = Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
+         elif self.mode=='baseline':
+-            self.observation_space = Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
++            self.observation_space = gym.spaces.Tuple((
++                Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
++                Box(np.array([-1.0,0,0]),1.0,shape = (3,), dtype=np.float32) #steering, throttle, braking
++            ))
+         else:
+             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
+         self.prev_speed = 0
+@@ -254,7 +257,16 @@ class ROARppoEnvE2E(ROAREnv):
+             cv2.imshow("data", np.hstack(np.hstack(map_list))) # uncomment to show occu map
+             cv2.waitKey(1)
+ 
+-            return map_list[:,:-1]
++            cnnObs = map_list[:,:-1]
++            last_control = self.agent.kwargs["control"]
++            last_control_array = np.array([
++                last_control.get_steering(),
++                last_control.get_throttle(),
++                last_control.get_braking()
++            ])#steering, throttle, braking
++
++
++            return (cnnObs,last_control)
+ 
+         else:
+             data = self.agent.occupancy_map.get_map(transform=self.agent.vehicle.transform,
+diff --git a/ROAR_gym/configurations/ppo_configuration.py b/ROAR_gym/configurations/ppo_configuration.py
+index 17b1310..7e6c1d3 100644
+--- a/ROAR_gym/configurations/ppo_configuration.py
++++ b/ROAR_gym/configurations/ppo_configuration.py
+@@ -10,8 +10,8 @@ sys.path.append(Path(os.getcwd()).parent.as_posix())
+ misc_params = {
+   "env_name": 'roar-e2e-ppo-v0',
+   "run_fps": 8,  # TODO Link to the environment RUN_FPS
+-  "model_directory": Path("./output/Yunhao_PPOe2e_Input_Change"),
+-  "run_name": "Test Run 1",
++  "model_directory": Path("./output/Yunhao_PPOe2e_CNN_Modified_Change_V2"),
++  "run_name": "CNN V2 Modified Run 1",
+   "total_timesteps": int(1e6),
+ }
+ 
+diff --git a/ROAR_gym/configurations/wandb_configuration.json b/ROAR_gym/configurations/wandb_configuration.json
+index cfb2610..2476cda 100644
+--- a/ROAR_gym/configurations/wandb_configuration.json
++++ b/ROAR_gym/configurations/wandb_configuration.json
+@@ -1 +1 @@
+-{"run_id": "Test Run 1", "name": "", "project_name": "Yunhao_Minor_Map_Input_Change", "entity": "roar"}
+\ No newline at end of file
++{"run_id": "CNN V2 Modified Run 1", "name": "", "project_name": "Yunhao_Minor_Map_Input_Change", "entity": "roar"}
+\ No newline at end of file
+diff --git a/ROAR_gym/e2eModel.py b/ROAR_gym/e2eModel.py
+index f0a3788..5d146a1 100644
+--- a/ROAR_gym/e2eModel.py
++++ b/ROAR_gym/e2eModel.py
+@@ -71,7 +71,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
+ 
+ 
+ # imports for helper functions and torch cnn models
+-from ppo_util import find_latest_model, CustomMaxPoolCNN, Atari_PPO_Adapted_CNN
++from ppo_util import find_latest_model, CustomMaxPoolCNN, Atari_PPO_Adapted_CNN, YunhaoModifiedAtariCNN
+ 
+ 
+ 
+@@ -213,7 +213,7 @@ def main(pass_num):
+     # Setting the feature extract or based on the environment mode
+     if env.mode == 'baseline':
+         policy_kwargs = dict(
+-            features_extractor_class=Atari_PPO_Adapted_CNN,
++            features_extractor_class=YunhaoModifiedAtariCNN, #Atari_PPO_Adapted_CNN,
+             features_extractor_kwargs=dict(features_dim=256)
+         )
+     else:
+diff --git a/ROAR_gym/ppo_util.py b/ROAR_gym/ppo_util.py
+index 6702b99..8316cc9 100644
+--- a/ROAR_gym/ppo_util.py
++++ b/ROAR_gym/ppo_util.py
+@@ -4,6 +4,7 @@ from typing import Optional, Dict
+ import gym
+ import torch as th
+ from torch import nn
++import torch
+ import torch.nn.functional as F
+ import torchvision
+ import numpy as np
+@@ -173,7 +174,6 @@ class CustomMaxPoolCNN_attention(BaseFeaturesExtractor):
+         return self.fullStack(observations[0])
+ 
+ 
+-
+ class CustomMaxPoolCNN(BaseFeaturesExtractor):
+     """
+     the CNN network that interleaves convolution & maxpooling layers, used in a
+@@ -424,6 +424,34 @@ class Atari_PPO_Adapted_CNN(BaseFeaturesExtractor):
+         observations=observations.view(observations.shape[0],-1,*observations.shape[3:])
+         return self.network(observations)
+ 
++class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
++    def __init__(self, observation_space: gym.spaces.Tuple, features_dim: int = 256):
++        super(YunhaoModifiedAtariCNN, self).__init__(observation_space,features_dim)
++        cnn_space = observation_space.spaces[0]
++        info_space = observation_space.spaces[1]
++        channels = cnn_space.shape[0]*cnn_space.shape[1]
++        self.network = nn.Sequential(
++            # Scale(1/255),
++            layer_init(nn.Conv2d(channels, 32, 8, stride=4)),
++            nn.ReLU(),
++            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
++            nn.ReLU(),
++            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
++            nn.ReLU(),
++            layer_init(nn.Conv2d(64,16,1,stride=1)), #added
++            nn.ReLU(),
++            nn.Flatten(),
++            layer_init(nn.Linear(784, features_dim - info_space.shape[0])), #shrinked
++            # nn.ReLU(),
++        )
++
++    def forward(self, observations : tuple) -> th.Tensor:
++        observations=observations.view(observations.shape[0],-1,*observations.shape[3:])
++        cnnOutput = self.network(observations[0])
++        infoOutput = observations[1]
++        return torch.concat((cnnOutput,infoOutput))
++
++
+ def find_latest_model(root_path: Path) -> Optional[Path]:
+     import os
+     from pathlib import Path

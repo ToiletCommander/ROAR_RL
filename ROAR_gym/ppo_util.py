@@ -4,6 +4,7 @@ from typing import Optional, Dict
 import gym
 import torch as th
 from torch import nn
+import torch
 import torch.nn.functional as F
 import torchvision
 import numpy as np
@@ -171,7 +172,6 @@ class CustomMaxPoolCNN_attention(BaseFeaturesExtractor):
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         return self.fullStack(observations[0])
-
 
 
 class CustomMaxPoolCNN(BaseFeaturesExtractor):
@@ -423,6 +423,34 @@ class Atari_PPO_Adapted_CNN(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor) -> th.Tensor:
         observations=observations.view(observations.shape[0],-1,*observations.shape[3:])
         return self.network(observations)
+
+class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Tuple, features_dim: int = 256):
+        super(YunhaoModifiedAtariCNN, self).__init__(observation_space,features_dim)
+        cnn_space = observation_space.spaces[0]
+        info_space = observation_space.spaces[1]
+        channels = cnn_space.shape[0]*cnn_space.shape[1]
+        self.network = nn.Sequential(
+            # Scale(1/255),
+            layer_init(nn.Conv2d(channels, 32, 8, stride=4)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64,16,1,stride=1)), #added
+            nn.ReLU(),
+            nn.Flatten(),
+            layer_init(nn.Linear(784, features_dim - info_space.shape[0])), #shrinked
+            # nn.ReLU(),
+        )
+
+    def forward(self, observations : tuple) -> th.Tensor:
+        observations=observations.view(observations.shape[0],-1,*observations.shape[3:])
+        cnnOutput = self.network(observations[0])
+        infoOutput = observations[1]
+        return torch.concat((cnnOutput,infoOutput))
+
 
 def find_latest_model(root_path: Path) -> Optional[Path]:
     import os
