@@ -106,7 +106,7 @@ class ROARppoEnvE2E(ROAREnv):
         self.previous_control = None
 
     def step(self, action: Any) -> Tuple[Any, float, bool, dict]:
-        obs = []
+        obs = None #[]
         rewards = []
         self.steps+=1
         for i in range(1):
@@ -131,8 +131,8 @@ class ROARppoEnvE2E(ROAREnv):
             self.agent.kwargs["control"] = control
             self.previous_control = control
             
-            ob, reward, is_done, info = super(ROARppoEnvE2E, self).step(action)
-            obs.append(ob)
+            obs, reward, is_done, info = super(ROARppoEnvE2E, self).step(action) #was ob, reward, is_done, ...
+            #obs.append(ob)
             rewards.append(reward)
             if is_done:
                 break
@@ -148,7 +148,7 @@ class ROARppoEnvE2E(ROAREnv):
             self.wandb_logger()
             self.crash_check = False
             self.update_highscore()
-        return np.array(obs), self.frame_reward, self._terminal(), self._get_info()
+        return obs, self.frame_reward, self._terminal(), self._get_info() #np.array(obs), self.frame_reward, self._terminal(), self._get_info()
 
     def _get_info(self) -> dict:
         info_dict = OrderedDict()
@@ -274,10 +274,11 @@ class ROARppoEnvE2E(ROAREnv):
             ])
 
 
-            return {
+            retVal = {
                 "occupancy_map": cnnObs,
                 "previous_control": last_control_array
             }
+            return retVal
 
         else:
             data = self.agent.occupancy_map.get_map(transform=self.agent.vehicle.transform,
