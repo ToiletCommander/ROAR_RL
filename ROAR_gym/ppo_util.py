@@ -452,8 +452,13 @@ class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
         occupancy_map=occupancy_map.view(occupancy_map.shape[0],-1,*occupancy_map.shape[3:])
         cnnOutput = self.network(occupancy_map)
 
-        return torch.concat((cnnOutput,torch.reshape(previous_control,(1,-1))),dim=1)
-
+        ret = None
+        try:
+            ret = torch.concat((cnnOutput,torch.reshape(previous_control,(1,-1))),dim=1)
+        except:
+            print("cnnOutput", cnnOutput.shape, "previous_control", previous_control.shape)
+            ret = torch.concat((torch.reshape(cnnOutput,(1,-1)),torch.reshape(previous_control,(1,-1))),dim=1)
+        return ret
 
 def find_latest_model(root_path: Path) -> Optional[Path]:
     import os
