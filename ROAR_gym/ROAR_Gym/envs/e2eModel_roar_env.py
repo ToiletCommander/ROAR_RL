@@ -205,9 +205,9 @@ class ROARppoEnvE2E(ROAREnv):
     def get_reward(self) -> float:
         # prep for reward computation
         # reward = -0.1*(1-self.agent.vehicle.control.throttle+10*self.agent.vehicle.control.braking+abs(self.agent.vehicle.control.steering))*400/8
-        reward = -0.05
+        reward = -1
         if self.agent.vehicle.control.steering == 0.0:
-            reward += 0.5
+            reward += 0.1
 
         if self.crash_check:
             print("no reward")
@@ -220,7 +220,6 @@ class ROARppoEnvE2E(ROAREnv):
 
 
         if not (self.agent.bbox_list[(self.agent.int_counter - self.death_line_dis) % len(self.agent.bbox_list)].has_crossed(self.agent.vehicle.transform))[0]:
-            print("cross?")
             reward -= 200
             self.crash_check = True
 
