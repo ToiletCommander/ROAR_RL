@@ -1,0 +1,24 @@
+{
+    "os": "Windows-10-10.0.22000-SP0",
+    "python": "3.7.9",
+    "heartbeatAt": "2022-07-10T05:01:38.805428",
+    "startedAt": "2022-07-10T05:01:37.322450",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080",
+    "gpu_count": 1,
+    "cpu_count": 20,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "e2eModel.py",
+    "codePath": "ROAR_Gym\\e2eModel.py",
+    "git": {
+        "remote": "https://github.com/ToiletCommander/ROAR_RL",
+        "commit": "323cdb1a15888d5b7ec36b52e9be0ffa8aad4ef6"
+    },
+    "email": "1745500559@qq.com",
+    "root": "D:/Programming/Subjects/ROAR/ROAR_RL",
+    "host": "Windys-Desktop",
+    "username": "cxcyh",
+    "executable": "D:\\Programming\\Subjects\\ROAR\\ROAR_RL\\roar-dev\\Scripts\\python.exe"
+}
