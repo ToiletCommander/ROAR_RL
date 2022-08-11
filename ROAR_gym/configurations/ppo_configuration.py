@@ -10,8 +10,8 @@ sys.path.append(Path(os.getcwd()).parent.as_posix())
 misc_params = {
   "env_name": 'roar-e2e-ppo-v0',
   "run_fps": 8,  # TODO Link to the environment RUN_FPS
-  "model_directory": Path("./output/Yunhao_PPOe2e_CNN_Modified_V2_Change_2"),
-  "run_name": "CNN Modified V2 Run 2",
+  "model_directory": Path("./output/Yunhao_PPOe2e_CNN_Modified_V3_Change_1"),
+  "run_name": "CNN Modified V3 Run 1",
   "total_timesteps": int(1e6),
 }
 

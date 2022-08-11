@@ -59,7 +59,7 @@ class ROARppoEnvE2E(ROAREnv):
         elif self.mode=='baseline':
             self.observation_space = gym.spaces.Dict({
                 "occupancy_map": Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
-                "previous_control": Box(np.array([-1.0,0,0]),1.0,shape = (3,), dtype=np.float32) #steering, throttle, braking
+                "vehicle_status": Box(np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.0,0.0]),1.0,shape=(8,),dtype=np.float32) #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
             })
         else:
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
@@ -103,7 +103,6 @@ class ROARppoEnvE2E(ROAREnv):
 
         self.deadzone_trigger = True
         self.deadzone_level = 0.001
-        self.previous_control = None
 
     def step(self, action: Any) -> Tuple[Any, float, bool, dict]:
         obs = None #[]
@@ -129,7 +128,6 @@ class ROARppoEnvE2E(ROAREnv):
                                     steering=steering,
                                     braking=braking)
             self.agent.kwargs["control"] = control
-            self.previous_control = control
             
             obs, reward, is_done, info = super(ROARppoEnvE2E, self).step(action) #was ob, reward, is_done, ...
             #obs.append(ob)
@@ -267,21 +265,25 @@ class ROARppoEnvE2E(ROAREnv):
             cv2.waitKey(1)
 
             cnnObs = map_list[:,:-1]
-            last_control = self.previous_control
-            last_control_array = np.array([ #steering, throttle, braking
-                last_control.get_steering(),
-                last_control.get_throttle(),
-                last_control.get_braking()
-            ]) if last_control is not None else np.array([
-                0.0,
-                0.0,
-                0.0
+            vehicle : Vehicle = self.agent.vehicle
+            abs_vehicle_speed = np.sqrt(vehicle.velocity.x ** 2 + vehicle.velocity.y ** 2 + vehicle.velocity.z ** 2)
+            vehicle_status_ret = np.array([ #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
+                vehicle.velocity.x / abs_vehicle_speed,
+                vehicle.velocity.y / abs_vehicle_speed,
+                vehicle.velocity.z / abs_vehicle_speed,
+                (vehicle.transform.rotation.roll % 360) / 360,
+                (vehicle.transform.rotation.pitch) / 360,
+                (vehicle.transform.rotation.yaw) / 360,
+                vehicle.control.throttle,
+                vehicle.control.steering,
+                vehicle.control.braking
             ])
+            
 
 
             retVal = {
                 "occupancy_map": cnnObs,
-                "previous_control": last_control_array
+                "vehicle_status": vehicle_status_ret
             }
             return retVal
 
@@ -322,7 +324,7 @@ class ROARppoEnvE2E(ROAREnv):
             self.largest_steps=self.steps
         super(ROARppoEnvE2E, self).reset()
         self.steps=0
-        self.previous_control = None
+        
         # self.crash_step=0
         # self.reward_step=0
         return self._get_obs()

@@ -428,7 +428,7 @@ class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 256):
         super(YunhaoModifiedAtariCNN, self).__init__(observation_space,features_dim)
         cnn_space = observation_space.spaces["occupancy_map"]
-        info_space = observation_space.spaces["previous_control"]
+        info_space = observation_space.spaces["vehicle_status"]
         channels = cnn_space.shape[0]*cnn_space.shape[1]
         self.network = nn.Sequential(
             # Scale(1/255),
@@ -447,7 +447,7 @@ class YunhaoModifiedAtariCNN(BaseFeaturesExtractor):
 
     def forward(self, observations : dict) -> th.Tensor:
         occupancy_map = observations["occupancy_map"]
-        previous_control = observations['previous_control']
+        previous_control = observations['vehicle_status']
 
         occupancy_map=occupancy_map.view(occupancy_map.shape[0],-1,*occupancy_map.shape[3:])
         cnnOutput = self.network(occupancy_map)
