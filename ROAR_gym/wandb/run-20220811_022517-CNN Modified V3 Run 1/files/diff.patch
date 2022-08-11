@@ -1,0 +1,13 @@
+diff --git a/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py b/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
+index 3cf6cc2..0a07a2e 100644
+--- a/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
++++ b/ROAR_gym/ROAR_Gym/envs/e2eModel_roar_env.py
+@@ -59,7 +59,7 @@ class ROARppoEnvE2E(ROAREnv):
+         elif self.mode=='baseline':
+             self.observation_space = gym.spaces.Dict({
+                 "occupancy_map": Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
+-                "vehicle_status": Box(np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.0,0.0]),1.0,shape=(8,),dtype=np.float32) #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
++                "vehicle_status": Box(np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.0,0.0]),1.0,shape=(9,),dtype=np.float32) #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
+             })
+         else:
+             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)

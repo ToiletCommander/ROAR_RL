@@ -59,7 +59,7 @@ class ROARppoEnvE2E(ROAREnv):
         elif self.mode=='baseline':
             self.observation_space = gym.spaces.Dict({
                 "occupancy_map": Box(-10, 1, shape=(FRAME_STACK,3, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32), # Occupancy Map
-                "vehicle_status": Box(np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.0,0.0]),1.0,shape=(8,),dtype=np.float32) #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
+                "vehicle_status": Box(np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.0,0.0]),1.0,shape=(9,),dtype=np.float32) #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
             })
         else:
             self.observation_space = Box(-10, 1, shape=(FRAME_STACK, CONFIG["x_res"], CONFIG["y_res"]), dtype=np.float32)
@@ -266,25 +266,29 @@ class ROARppoEnvE2E(ROAREnv):
 
             cnnObs = map_list[:,:-1]
             vehicle : Vehicle = self.agent.vehicle
-            abs_vehicle_speed = np.sqrt(vehicle.velocity.x ** 2 + vehicle.velocity.y ** 2 + vehicle.velocity.z ** 2)
+            abs_vehicle_speed = np.sqrt(vehicle.velocity.x ** 2 + vehicle.velocity.y ** 2 + vehicle.velocity.z ** 2) + 0.01
             vehicle_status_ret = np.array([ #velocityX, velocityY, velocityZ, roll, pitch, yaw, throttle, steer, braking
                 vehicle.velocity.x / abs_vehicle_speed,
                 vehicle.velocity.y / abs_vehicle_speed,
                 vehicle.velocity.z / abs_vehicle_speed,
-                (vehicle.transform.rotation.roll % 360) / 360,
-                (vehicle.transform.rotation.pitch) / 360,
-                (vehicle.transform.rotation.yaw) / 360,
+                ((vehicle.transform.rotation.roll % 360 + 360) % 360) / 360,
+                ((vehicle.transform.rotation.pitch % 360 + 360) % 360) / 360,
+                ((vehicle.transform.rotation.yaw % 360 + 360) % 360) / 360,
                 vehicle.control.throttle,
                 vehicle.control.steering,
                 vehicle.control.braking
             ])
+            if None in vehicle_status_ret or np.nan in vehicle_status_ret:
+                vehicle_status_ret = np.zeros((9,))
             
-
 
             retVal = {
                 "occupancy_map": cnnObs,
                 "vehicle_status": vehicle_status_ret
             }
+
+            print("vehicle_state",vehicle_status_ret)
+
             return retVal
 
         else:
